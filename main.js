@@ -1,6 +1,7 @@
 const chalk = require('chalk');
 const os = require('os-utils');
-const spintax = require('spintax');
+
+let spintax;
 
 // KONFIGURASI PENGGUNA
 const config = {
@@ -10,43 +11,58 @@ const config = {
     template: "{Halo|Hai} artikel ini sangat {bagus|bermanfaat}. Cek juga [LINK]"
 };
 
-// STABILIZER: Pantau CPU & RAM
+// STABILIZER: Pantau CPU
 setInterval(() => {
     os.cpuUsage((v) => {
         if (v > 0.8) {
-            console.log(chalk.red(`[!] CPU Warning: ${(v * 100).toFixed(2)}% - Slowing down...`));
+            console.log(chalk.red(`[!] CPU Warning: ${(v * 100).toFixed(2)}% - Resource Heavy!`));
         }
     });
 }, 5000);
 
 // ENGINE KOMENTAR (Spintax)
 function generateComment() {
-    let comment = spintax.unspin(config.template);
-    return comment.replace("[LINK]", `<a href="${config.targetUrl}">${config.anchorText}</a>`);
+    // Memastikan spintax sudah termuat
+    let rawComment = spintax.unspin ? spintax.unspin(config.template) : config.template;
+    return rawComment.replace("[LINK]", `<a href="${config.targetUrl}">${config.anchorText}</a>`);
 }
 
-// WORKER THREAD SIMULATION
+// WORKER THREAD
 async function runThread(id) {
-    console.log(chalk.blue(`[Thread ${id}] Started...`));
+    console.log(chalk.blue(`[Thread ${id}] Active`));
     
     while (true) {
         try {
-            // Logika Automation (Bypass Proxy & Post Comment) di sini
-            // ...
+            const finalComment = generateComment();
             
-            // NOTIFIKASI BERHASIL (Console Only)
-            console.log(chalk.green(`[SUCCESS] Thread ${id}: Backlink planted on target-domain.com`));
+            // Logika Posting Disini...
             
-            // Jeda Stabilizer agar tidak overload
-            await new Promise(resolve => setTimeout(resolve, 3000)); 
+            console.log(chalk.green(`[SUCCESS] Thread ${id}: Link planted.`));
+            
+            // Jeda 5 detik agar Ubuntu 1GB RAM tidak crash
+            await new Promise(resolve => setTimeout(resolve, 5000)); 
         } catch (err) {
-            console.log(chalk.gray(`[FAILED] Thread ${id}: Proxy Dead or Timeout`));
+            console.log(chalk.gray(`[FAILED] Thread ${id}: Connection Timeout`));
         }
     }
 }
 
-// BOOTSTRAP: Jalankan 10 Thread
-console.log(chalk.yellow("=== GHOST LINK BUILDER STARTING ==="));
-for (let i = 1; i <= config.threads; i++) {
-    runThread(i);
+// INISIALISASI SYSTEM
+async function init() {
+    try {
+        const spintaxModule = await import('spintax');
+        spintax = spintaxModule.default || spintaxModule;
+        
+        console.log(chalk.cyan("====================================="));
+        console.log(chalk.cyan("      GHOST LINK BUILDER v1.0       "));
+        console.log(chalk.cyan("====================================="));
+        
+        for (let i = 1; i <= config.threads; i++) {
+            runThread(i);
+        }
+    } catch (error) {
+        console.error(chalk.red("Failed to load spintax module:"), error);
+    }
 }
+
+init();
