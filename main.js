@@ -1,16 +1,19 @@
 const chalk = require('chalk');
 const os = require('os-utils');
+const axios = require('axios');
 
-// KONFIGURASI PENGGUNA
+// --- 1. KONFIGURASI ---
 const config = {
     threads: 10,
     targetUrl: "https://website-anda.com",
     anchorText: "Jasa SEO Terbaik",
-    // Format: {pilihan1|pilihan2|pilihan3}
-    template: "{Halo|Hai|Salam}, artikel ini sangat {bermanfaat|keren|luar biasa}. Terima kasih sudah berbagi! [LINK]"
+    template: "{Halo|Hai|Salam}, artikel ini sangat {bermanfaat|keren|luar biasa}. Terima kasih! [LINK]",
+    proxySource: "https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all"
 };
 
-// 1. FUNGSI SPINTAX INTERNAL (Lightweight - No External Module)
+let proxyList = [];
+
+// --- 2. FUNGSI SPINTAX INTERNAL ---
 function unspin(text) {
     return text.replace(/{([^{}]*)}/g, (match, options) => {
         const choices = options.split('|');
@@ -18,48 +21,75 @@ function unspin(text) {
     });
 }
 
-// 2. ENGINE GENERATOR
+// --- 3. PROXY SCRAPER (Gratis & Otomatis) ---
+async function refreshProxies() {
+    try {
+        const response = await axios.get(config.proxySource);
+        proxyList = response.data.split('\r\n').filter(p => p.length > 0);
+        console.log(chalk.magenta(`[SYSTEM] Proxy Refreshed: ${proxyList.length} proxies loaded.`));
+    } catch (err) {
+        console.log(chalk.red(`[ERROR] Failed to fetch proxies: ${err.message}`));
+    }
+}
+
+// --- 4. ENGINE GENERATOR KOMENTAR ---
 function generateComment() {
     const raw = unspin(config.template);
     const anchor = `<a href="${config.targetUrl}">${config.anchorText}</a>`;
     return raw.replace("[LINK]", anchor);
 }
 
-// 3. STABILIZER & MONITOR
-setInterval(() => {
-    os.cpuUsage((v) => {
-        if (v > 0.8) {
-            console.log(chalk.red(`[!] CPU Critical: ${(v * 100).toFixed(0)}% | Auto-throttling active.`));
-        }
-    });
-}, 5000);
-
-// 4. WORKER THREAD
+// --- 5. WORKER THREAD LOGIC ---
 async function runThread(id) {
     console.log(chalk.blue(`[Thread ${id}] Initialized.`));
     
     while (true) {
         try {
+            // Ambil proxy acak
+            const currentProxy = proxyList[Math.floor(Math.random() * proxyList.length)];
             const comment = generateComment();
+
+            // LOGIKA POSTING (Placeholder untuk request HTTP)
+            // Di sini nanti bot akan melakukan 'axios.post' ke target website
             
-            // Logika Automation (Proxy & HTTP Post) akan kita tambahkan di sini
-            
-            console.log(chalk.green(`[SUCCESS] T${id} | RAM: ${(os.freememPercentage() * 100).toFixed(0)}% Free | Msg: ${comment.substring(0, 20)}...`));
-            
-            // Jeda 5-10 detik agar VPS 1GB tidak hang
+            // Output Notifikasi Sukses
+            console.log(chalk.green(`[SUCCESS] T${id} | Proxy: ${currentProxy || 'Direct'} | RAM: ${(os.freememPercentage() * 100).toFixed(0)}% Free`));
+            console.log(chalk.white(`       > Msg: ${comment.substring(0, 40)}...`));
+
+            // Jeda Stabilizer (5-10 detik)
             await new Promise(res => setTimeout(res, 5000 + (Math.random() * 5000)));
         } catch (err) {
-            console.log(chalk.gray(`[FAILED] T${id} | Runtime Error`));
+            console.log(chalk.gray(`[FAILED] T${id} | Runtime Error: ${err.message}`));
+            await new Promise(res => setTimeout(res, 2000));
         }
     }
 }
 
-// 5. START SYSTEM
-console.log(chalk.cyan("====================================="));
-console.log(chalk.cyan("      GHOST LINK BUILDER v1.0       "));
-console.log(chalk.cyan("    Status: ULTRA-LIGHTWEIGHT       "));
-console.log(chalk.cyan("====================================="));
+// --- 6. INITIALIZATION ---
+async function init() {
+    console.clear();
+    console.log(chalk.cyan("====================================="));
+    console.log(chalk.cyan("      GHOST LINK BUILDER v1.0       "));
+    console.log(chalk.cyan("    Status: ULTRA-LIGHTWEIGHT       "));
+    console.log(chalk.cyan("====================================="));
 
-for (let i = 1; i <= config.threads; i++) {
-    runThread(i);
+    // Load proxy pertama kali
+    await refreshProxies();
+    
+    // Refresh proxy setiap 15 menit
+    setInterval(refreshProxies, 15 * 60 * 1000);
+
+    // Monitor CPU secara berkala
+    setInterval(() => {
+        os.cpuUsage((v) => {
+            if (v > 0.8) console.log(chalk.red(`[!] CPU Warning: ${(v * 100).toFixed(0)}%`));
+        });
+    }, 10000);
+
+    // Jalankan threads secara bertahap
+    for (let i = 1; i <= config.threads; i++) {
+        setTimeout(() => runThread(i), i * 1500); 
+    }
 }
+
+init();
