@@ -4,11 +4,9 @@
   "description": "Ultra-lightweight Backlink Bot for Ubuntu",
   "main": "main.js",
   "dependencies": {
-    "puppeteer-core": "^21.0.0",
-    "axios": "^1.6.0",
     "chalk": "^4.1.2",
-    "spintax": "^1.0.0",
-    "os-utils": "^0.0.14"
+    "os-utils": "^0.0.14",
+    "axios": "^1.6.0"
   },
   "scripts": {
     "start": "node main.js"
